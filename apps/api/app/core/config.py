@@ -14,7 +14,13 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
 
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres_dev_password@localhost:5432/telesys_erp"
+    DATABASE_URL: str = "postgresql://postgres:123456@localhost:5433/telesys_erp"
+
+    # JWT Security & Auth
+    SECRET_KEY: str = "telesys_dev_secret_key_change_in_production_32bytes_min"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours for dev convenience
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # CORS
     CORS_ORIGINS: List[str] = [
