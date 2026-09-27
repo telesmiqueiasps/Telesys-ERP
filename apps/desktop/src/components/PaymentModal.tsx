@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { X, CheckCircle2, Trash2, CreditCard } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, CheckCircle2, Trash2, CreditCard, Banknote, QrCode, CreditCard as CardIcon, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CartItem, SaleDetail, SalePaymentInput } from "@/types/sale";
 import { Customer } from "@/types/customer";
 import { saleService } from "@/services/saleService";
+import { syncEngine } from "@/services/syncEngine";
 import { useAuthStore } from "@/store/useAuthStore";
 
 interface PaymentModalProps {
@@ -33,17 +34,61 @@ export function PaymentModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const cashInputRef = useRef<HTMLInputElement>(null);
+
   const numDiscount = parseFloat(discountAmount.replace(",", ".")) || 0;
   const finalTotal = Math.max(0, subtotal - numDiscount);
 
-  // Initialize payment amount when modal opens
+  // Quick Payment Options mapping
+  const paymentOptions = [
+    { key: "1", code: "MONEY", label: "Dinheiro", icon: Banknote },
+    { key: "2", code: "PIX", label: "PIX", icon: QrCode },
+    { key: "3", code: "CREDIT_CARD", label: "Crédito", icon: CardIcon },
+    { key: "4", code: "DEBIT_CARD", label: "Débito", icon: CreditCard },
+    { key: "5", code: "BOLETO", label: "Boleto", icon: FileText },
+  ];
+
+  // Reset when opening
   useEffect(() => {
     if (isOpen) {
       setDiscountAmount("0.00");
       setPayments([{ payment_method: "MONEY", amount: finalTotal, change_amount: 0 }]);
       setReceivedCashAmount(finalTotal > 0 ? finalTotal.toFixed(2) : "0.00");
       setError(null);
+      setTimeout(() => {
+        if (cashInputRef.current) cashInputRef.current.select();
+      }, 100);
     }
+  }, [isOpen, finalTotal]);
+
+  const selectSinglePaymentMethod = (methodCode: string) => {
+    setPayments([{ payment_method: methodCode, amount: finalTotal, change_amount: 0 }]);
+    if (methodCode === "MONEY" && cashInputRef.current) {
+      cashInputRef.current.focus();
+      cashInputRef.current.select();
+    }
+  };
+
+  // Keyboard shortcut listener for keys 1, 2, 3, 4, 5
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is currently typing in an input field (unless they press Number while focused elsewhere)
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
+
+      if (!isInput) {
+        if (e.key === "1") selectSinglePaymentMethod("MONEY");
+        else if (e.key === "2") selectSinglePaymentMethod("PIX");
+        else if (e.key === "3") selectSinglePaymentMethod("CREDIT_CARD");
+        else if (e.key === "4") selectSinglePaymentMethod("DEBIT_CARD");
+        else if (e.key === "5") selectSinglePaymentMethod("BOLETO");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, finalTotal]);
 
   if (!isOpen) return null;
@@ -85,7 +130,6 @@ export function PaymentModal({
     setLoading(true);
     setError(null);
 
-    // Ajusta o troco na forma de pagamento Dinheiro
     const finalPayments = payments.map((p) => {
       if (p.payment_method === "MONEY") {
         return { ...p, change_amount: changeCalculated };
@@ -108,6 +152,25 @@ export function PaymentModal({
         },
         activeCompany?.id
       );
+
+      // Registrar evento na sync engine local-first
+      const user = useAuthStore.getState().user;
+      if (user && activeCompany) {
+        syncEngine.enqueueEvent({
+          tenant_id: user.tenant_id,
+          company_id: activeCompany.id,
+          entity_type: "sale",
+          action: "CREATE",
+          payload: {
+            sale_id: sale.id,
+            total_amount: sale.total_amount,
+            subtotal: sale.subtotal,
+            discount_amount: sale.discount_amount,
+            payments_count: sale.payments?.length || 1,
+            items_count: sale.items?.length || cartItems.length,
+          },
+        });
+      }
 
       onSuccess(sale);
       onClose();
@@ -172,52 +235,63 @@ export function PaymentModal({
             </div>
           </div>
 
-          {/* Quick Payment Method Add Buttons */}
+          {/* Seleção Numérica de Forma de Pagamento (Atalhos 1 a 5) */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">Formas de Pagamento Rápido</label>
-            <div className="grid grid-cols-4 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddPayment("MONEY")}
-                className="text-xs font-semibold"
-              >
-                + Dinheiro
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddPayment("PIX")}
-                className="text-xs font-semibold"
-              >
-                + PIX
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddPayment("CREDIT_CARD")}
-                className="text-xs font-semibold"
-              >
-                + Crédito
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddPayment("DEBIT_CARD")}
-                className="text-xs font-semibold"
-              >
-                + Débito
-              </Button>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Selecione a Forma de Pagamento (Teclas 1 a 5)
+              </label>
+              <span className="text-[10px] text-muted-foreground italic">Pressione o número no teclado</span>
+            </div>
+            
+            <div className="grid grid-cols-5 gap-2">
+              {paymentOptions.map((opt) => {
+                const Icon = opt.icon;
+                const isSelected = payments.length === 1 && payments[0].payment_method === opt.code;
+                return (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    onClick={() => selectSinglePaymentMethod(opt.code)}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all relative group ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary/30"
+                        : "bg-card border-border hover:bg-accent text-foreground"
+                    }`}
+                  >
+                    <span className="absolute top-1 left-1.5 font-mono text-[10px] font-bold opacity-70 bg-black/10 dark:bg-white/10 px-1 rounded">
+                      [{opt.key}]
+                    </span>
+                    <Icon className="h-5 w-5 mb-1 text-emerald-500" />
+                    <span className="text-[11px] font-bold">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Active Payments List */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground">Pagamentos Lançados</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground">Pagamentos Lançados</label>
+              <div className="flex items-center gap-2">
+                {remaining > 0 && (
+                  <span className="text-xs text-amber-500 font-bold">
+                    Restante: R$ {remaining.toFixed(2)}
+                  </span>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddPayment("MONEY")}
+                  className="h-6 text-[11px] font-semibold text-primary"
+                >
+                  + Dividir Pagamento
+                </Button>
+              </div>
+            </div>
+
             {payments.map((p, idx) => (
               <div key={idx} className="flex items-center gap-3 p-2 bg-card border border-border/80 rounded-lg">
                 <select
@@ -229,11 +303,11 @@ export function PaymentModal({
                   }}
                   className="h-9 px-2 text-xs rounded border border-input bg-background font-semibold"
                 >
-                  <option value="MONEY">Dinheiro</option>
-                  <option value="PIX">PIX</option>
-                  <option value="CREDIT_CARD">Cartão de Crédito</option>
-                  <option value="DEBIT_CARD">Cartão de Débito</option>
-                  <option value="BOLETO">Boleto</option>
+                  <option value="MONEY">Dinheiro [1]</option>
+                  <option value="PIX">PIX [2]</option>
+                  <option value="CREDIT_CARD">Cartão de Crédito [3]</option>
+                  <option value="DEBIT_CARD">Cartão de Débito [4]</option>
+                  <option value="BOLETO">Boleto [5]</option>
                 </select>
 
                 <div className="flex-1 relative">
@@ -269,24 +343,25 @@ export function PaymentModal({
 
           {/* Cash Change Calculation if Money is selected */}
           {payments.some((p) => p.payment_method === "MONEY") && (
-            <div className="p-3 bg-muted/40 rounded-xl border border-border/60 space-y-2">
+            <div className="p-3.5 bg-muted/40 rounded-xl border border-border/60 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-muted-foreground">Valor Recebido em Dinheiro pelo Cliente:</span>
+                <span className="font-semibold text-muted-foreground">Valor Recebido em Dinheiro (R$):</span>
                 <div className="w-36 relative">
                   <span className="absolute left-2.5 top-1.5 text-xs font-bold text-muted-foreground">R$</span>
                   <Input
+                    ref={cashInputRef}
                     type="number"
                     step="0.01"
                     value={receivedCashAmount}
                     onChange={(e) => setReceivedCashAmount(e.target.value)}
-                    className="pl-8 h-8 text-xs font-mono font-bold"
+                    className="pl-8 h-9 text-xs font-mono font-bold text-emerald-500"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-border/60">
+              <div className="flex items-center justify-between pt-2 border-t border-border/60">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-500">Troco a Devolver:</span>
-                <span className="font-mono font-extrabold text-base text-emerald-500">
+                <span className="font-mono font-extrabold text-lg text-emerald-500">
                   R$ {changeCalculated.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </span>
               </div>

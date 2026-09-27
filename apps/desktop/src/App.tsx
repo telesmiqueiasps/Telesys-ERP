@@ -4,9 +4,14 @@ import { LoginView } from "@/pages/LoginView";
 import { AppLayout } from "@/layouts/AppLayout";
 import { DashboardView } from "@/pages/DashboardView";
 import { ProductsView } from "@/pages/ProductsView";
+import { PurchasesView } from "@/pages/PurchasesView";
 import { CustomersView } from "@/pages/CustomersView";
-import { CashView } from "@/pages/CashView";
+import { FinanceView } from "@/pages/FinanceView";
+import { AuditView } from "@/pages/AuditView";
 import { PdvView } from "@/pages/PdvView";
+import { SettingsView } from "@/pages/SettingsView";
+import { SuperAdminView } from "@/pages/SuperAdminView";
+import { ReportsView } from "@/pages/ReportsView";
 
 export function App() {
   const { isAuthenticated } = useAuthStore();
@@ -24,14 +29,26 @@ export function App() {
         return <PdvView />;
       case "estoque":
         return <ProductsView />;
+      case "compras":
+        return <PurchasesView />;
       case "cadastros":
         return <CustomersView />;
       case "financeiro":
-        return <CashView />;
+        return <FinanceView />;
+      case "relatorios":
+        return <ReportsView />;
+      case "auditoria":
+        return <AuditView />;
+      case "configuracoes":
+        return <SettingsView />;
+      case "superadmin":
+        return <SuperAdminView />;
       default:
         return <DashboardView onNavigate={setActiveModule} />;
     }
   };
+
+
 
   return (
     <AppLayout activeModule={activeModule} onNavigate={setActiveModule}>

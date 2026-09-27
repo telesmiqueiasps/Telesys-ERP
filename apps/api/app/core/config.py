@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours for dev convenience
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
+    # Cloudflare R2 / S3 Storage
+    S3_BUCKET_NAME: str = ""
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: str = ""
+    S3_ENDPOINT_URL: str = ""  # Ex: https://<account_id>.r2.cloudflarestorage.com
+    S3_REGION_NAME: str = "auto"
+
+
     # CORS
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

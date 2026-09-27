@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/apiClient";
 import { useAuthStore } from "@/store/useAuthStore";
+import { backupService } from "@/services/backupService";
 import {
   CashRegisterDetail,
   CashRegisterOpenInput,
@@ -52,7 +53,7 @@ export const cashService = {
     const params = new URLSearchParams();
     if (companyId) params.append("company_id", companyId);
 
-    return apiFetch<CashRegisterDetail>(
+    const result = await apiFetch<CashRegisterDetail>(
       `/cash/close?${params.toString()}`,
       {
         method: "POST",
@@ -60,7 +61,17 @@ export const cashService = {
       },
       token
     );
+
+    // Disparo automático de backup ao fechar o caixa (silencioso em segundo plano)
+    try {
+      backupService.createBackup(true).catch((err) => console.warn("[Backup] Auto backup no fechamento:", err));
+    } catch (e) {
+      // Ignora erro no background para não interromper a UX do operador
+    }
+
+    return result;
   },
+
 
   async getCashHistory(companyId?: string): Promise<CashRegisterDetail[]> {
     const token = useAuthStore.getState().token;

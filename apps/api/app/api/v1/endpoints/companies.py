@@ -69,3 +69,38 @@ def get_company(
         raise HTTPException(status_code=403, detail="Acesso não autorizado a esta empresa")
 
     return company
+
+
+@router.put("/{company_id}", response_model=CompanyResponse, summary="Atualizar Empresa")
+def update_company(
+    company_id: UUID,
+    company_in: CompanyUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.require_permission("usuarios.gerenciar"))
+) -> Any:
+    """
+    Atualiza dados de uma empresa existente.
+    """
+    company = db.scalar(select(Company).where(Company.id == company_id))
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+
+    if not current_user.is_superuser and company.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado a esta empresa")
+
+    if company_in.name is not None:
+        company.name = company_in.name
+    if company_in.trade_name is not None:
+        company.trade_name = company_in.trade_name
+    if company_in.cnpj is not None:
+        company.cnpj = company_in.cnpj
+    if company_in.state_registration is not None:
+        company.state_registration = company_in.state_registration
+    if company_in.is_active is not None:
+        company.is_active = company_in.is_active
+
+    db.add(company)
+    db.commit()
+    db.refresh(company)
+    return company
+

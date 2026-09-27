@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Layers,
   LayoutDashboard,
   ShoppingCart,
   Package,
+  ShoppingBag,
   DollarSign,
   Users,
   Settings,
+  ShieldCheck,
   LogOut,
   Building2,
   ChevronLeft,
@@ -14,13 +16,23 @@ import {
   Sun,
   Moon,
   Wifi,
+  WifiOff,
+  RefreshCw,
+  AlertCircle,
   ChevronDown,
+  BarChart3,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CompanySelectorModal } from "@/components/CompanySelectorModal";
+import { SyncStatusModal } from "@/components/SyncStatusModal";
+import { UpdateModal } from "@/components/UpdateModal";
+import { syncEngine } from "@/services/syncEngine";
+import { updaterService } from "@/services/updaterService";
+import { SyncStatusStats } from "@/types/sync";
+import { UpdateCheckResponse } from "@/types/updater";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -32,15 +44,53 @@ export function AppLayout({ children, activeModule = "dashboard", onNavigate }: 
   const { user, activeCompany, logout } = useAuthStore();
   const { theme, toggleTheme, isSidebarOpen, toggleSidebar } = useAppStore();
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [syncStats, setSyncStats] = useState<SyncStatusStats>(syncEngine.getStats());
+
+  const [updateData, setUpdateData] = useState<UpdateCheckResponse | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+
+  useEffect(() => {
+    // Iniciar background worker de sincronização offline-first
+    const stopWorker = syncEngine.startWorker(12000);
+    const unsubscribe = syncEngine.subscribe((stats) => {
+      setSyncStats(stats);
+    });
+
+    // Check silencioso de atualização do aplicativo
+    updaterService.checkForUpdates()
+      .then((data) => {
+        if (data.update_available) {
+          setUpdateData(data);
+          setIsUpdateModalOpen(true);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      stopWorker();
+      unsubscribe();
+    };
+  }, []);
+
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "pdv", label: "PDV (Frente de Caixa)", icon: ShoppingCart },
     { id: "estoque", label: "Estoque & Produtos", icon: Package },
+    { id: "compras", label: "Compras & Entradas", icon: ShoppingBag },
     { id: "financeiro", label: "Financeiro & Caixa", icon: DollarSign },
+    { id: "relatorios", label: "Relatórios & BI", icon: BarChart3 },
     { id: "cadastros", label: "Cadastros & Clientes", icon: Users },
+    { id: "auditoria", label: "Auditoria & Logs", icon: ShieldCheck },
     { id: "configuracoes", label: "Configurações", icon: Settings },
   ];
+
+
+  if (user?.is_superuser) {
+    navItems.push({ id: "superadmin", label: "Gestão SuperAdmin", icon: ShieldCheck });
+  }
+
 
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-colors duration-200">
@@ -161,9 +211,43 @@ export function AppLayout({ children, activeModule = "dashboard", onNavigate }: 
 
           {/* Right Status & Profile Controls */}
           <div className="flex items-center gap-3">
-            <Badge variant="success" className="gap-1 px-2.5 py-0.5 text-xs font-medium">
-              <Wifi className="h-3 w-3" /> API Cloud Conectada
-            </Badge>
+            {syncStats.syncingCount > 0 ? (
+              <Badge
+                variant="outline"
+                onClick={() => setIsSyncModalOpen(true)}
+                className="gap-1.5 px-2.5 py-1 text-xs font-medium border-blue-500/40 text-blue-500 bg-blue-500/10 cursor-pointer hover:bg-blue-500/20 transition-colors animate-pulse"
+                title="Clique para abrir central de sincronização"
+              >
+                <RefreshCw className="h-3 w-3 animate-spin" /> Sincronizando ({syncStats.pendingCount})
+              </Badge>
+            ) : syncStats.pendingCount > 0 ? (
+              <Badge
+                variant="outline"
+                onClick={() => setIsSyncModalOpen(true)}
+                className="gap-1.5 px-2.5 py-1 text-xs font-medium border-amber-500/40 text-amber-500 bg-amber-500/10 cursor-pointer hover:bg-amber-500/20 transition-colors"
+                title="Clique para abrir central de sincronização"
+              >
+                <AlertCircle className="h-3 w-3" /> Pendente ({syncStats.pendingCount})
+              </Badge>
+            ) : syncStats.isOnline ? (
+              <Badge
+                variant="success"
+                onClick={() => setIsSyncModalOpen(true)}
+                className="gap-1.5 px-2.5 py-1 text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity"
+                title="Clique para abrir central de sincronização"
+              >
+                <Wifi className="h-3 w-3" /> Cloud Conectado
+              </Badge>
+            ) : (
+              <Badge
+                variant="destructive"
+                onClick={() => setIsSyncModalOpen(true)}
+                className="gap-1.5 px-2.5 py-1 text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity"
+                title="Clique para abrir central de sincronização"
+              >
+                <WifiOff className="h-3 w-3" /> Modo Offline (SQLite)
+              </Badge>
+            )}
 
             <Button
               variant="outline"
@@ -203,6 +287,20 @@ export function AppLayout({ children, activeModule = "dashboard", onNavigate }: 
         isOpen={isCompanyModalOpen}
         onClose={() => setIsCompanyModalOpen(false)}
       />
+
+      {/* Modal de Status de Sincronização Local-First */}
+      <SyncStatusModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+      />
+
+      {/* Banner / Modal de Atualização Automática */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        updateData={updateData}
+      />
     </div>
   );
 }
+

@@ -1,5 +1,6 @@
 from typing import List, Any, Optional
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
@@ -96,8 +97,9 @@ def create_sale(
         item_total = item_subtotal - item_in.discount_amount
         subtotal += item_subtotal
 
-        # Baixa estoque do produto
-        product.stock_qty -= item_in.quantity
+        prev_qty = Decimal(str(product.stock_qty))
+        new_qty = prev_qty - item_in.quantity
+        product.stock_qty = float(new_qty)
         db.add(product)
 
         # Histórico de estoque
@@ -106,11 +108,13 @@ def create_sale(
             company_id=target_company_id,
             product_id=product.id,
             user_id=current_user.id,
-            movement_type=StockMovementType.OUT,
-            quantity=item_in.quantity,
-            unit_price=item_in.unit_price,
-            total_price=item_total,
-            description=f"Venda PDV {sale_code}",
+            movement_type=StockMovementType.SAIDA_VENDA,
+            quantity=-float(item_in.quantity),
+            previous_qty=float(prev_qty),
+            new_qty=float(new_qty),
+            unit_cost=float(product.cost) if product.cost else None,
+            reference_doc=sale_code,
+            notes=f"Venda PDV {sale_code}",
         )
         stock_movements_to_create.append(stock_mov)
 

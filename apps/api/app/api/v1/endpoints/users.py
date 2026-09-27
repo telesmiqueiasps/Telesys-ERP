@@ -80,3 +80,42 @@ def get_user(
         raise HTTPException(status_code=403, detail="Acesso não autorizado")
 
     return user
+
+
+@router.put("/{user_id}", response_model=UserWithRolesResponse, summary="Atualizar Usuário")
+def update_user(
+    user_id: UUID,
+    user_in: UserUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.require_permission("usuarios.gerenciar"))
+) -> Any:
+    """
+    Atualiza dados do usuário.
+    """
+    user = db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if not current_user.is_superuser and user.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado")
+
+    if user_in.name is not None:
+        user.name = user_in.name
+    if user_in.email is not None:
+        user.email = user_in.email
+    if user_in.password:
+        user.password_hash = security.get_password_hash(user_in.password)
+    if user_in.is_active is not None:
+        user.is_active = user_in.is_active
+    if user_in.is_superuser is not None and current_user.is_superuser:
+        user.is_superuser = user_in.is_superuser
+
+    if user_in.role_ids is not None:
+        roles = db.scalars(select(Role).where(Role.id.in_(user_in.role_ids))).all()
+        user.roles = list(roles)
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
