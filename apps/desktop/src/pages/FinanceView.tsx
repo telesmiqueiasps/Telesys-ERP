@@ -12,6 +12,7 @@ import {
   Tag,
   TrendingUp,
   XCircle,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +27,12 @@ import { financeService } from "@/services/financeService";
 import { PayableModal } from "@/components/PayableModal";
 import { ReceivableModal } from "@/components/ReceivableModal";
 import { PayOffModal } from "@/components/PayOffModal";
+import { CashView } from "@/pages/CashView";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export function FinanceView() {
   const { activeCompany } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<"payables" | "receivables" | "categories">("payables");
+  const [activeTab, setActiveTab] = useState<"caixa" | "payables" | "receivables" | "categories">("payables");
 
   const [summary, setSummary] = useState<FinancialSummary>({
     total_receivable_pending: 0,
@@ -278,6 +280,17 @@ export function FinanceView() {
             >
               Categorias ({categories.length})
             </button>
+
+            <button
+              onClick={() => setActiveTab("caixa")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                activeTab === "caixa"
+                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <Wallet className="h-3.5 w-3.5" /> Operações de Caixa
+            </button>
           </div>
 
           <Button variant="outline" size="sm" onClick={fetchFinancialData} disabled={loading} className="gap-1.5 text-xs h-9">
@@ -287,7 +300,7 @@ export function FinanceView() {
         </div>
 
         {/* Filter Toolbar for Payables & Receivables */}
-        {activeTab !== "categories" && (
+        {activeTab !== "categories" && activeTab !== "caixa" && (
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -316,13 +329,16 @@ export function FinanceView() {
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground flex flex-col items-center justify-center space-y-2">
-            <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-            <span>Carregando dados financeiros...</span>
-          </div>
-        ) : activeTab === "payables" ? (
+      {activeTab === "caixa" ? (
+        <CashView />
+      ) : (
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="p-12 text-center text-xs text-muted-foreground flex flex-col items-center justify-center space-y-2">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <span>Carregando dados financeiros...</span>
+            </div>
+          ) : activeTab === "payables" ? (
           /* Table Contas a Pagar */
           filteredPayables.length === 0 ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Nenhuma conta a pagar encontrada.</div>
@@ -456,6 +472,7 @@ export function FinanceView() {
           </div>
         )}
       </div>
+      )}
 
       {/* Modais */}
       <PayableModal

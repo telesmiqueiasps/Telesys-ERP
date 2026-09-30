@@ -1,8 +1,8 @@
 import uuid
 import random
-from typing import List, Any
+from typing import List, Any, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select, desc
 
@@ -18,8 +18,94 @@ from app.schemas.purchase import (
     PurchaseResponse,
     PurchaseItemResponse,
 )
+from app.schemas.purchase_import import (
+    NfeImportPreviewResponse,
+    PurchaseConfirmInput,
+)
+from app.services.nfe_xml_import_service import NfeXmlImportService
 
 router = APIRouter()
+
+
+@router.post("/import-xml-preview", response_model=NfeImportPreviewResponse, summary="FASE 1: Prévia e Validação de Importação XML de NF-e")
+async def preview_nfe_xml_import(
+    company_id: uuid.UUID = Query(..., description="ID da Empresa"),
+    xml_file: Optional[UploadFile] = File(None, description="Arquivo XML da NF-e Modelo 55"),
+    xml_content_str: Optional[str] = Form(None, description="Conteúdo XML em texto puro"),
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    FASE 1: Recebe o XML da NF-e Modelo 55 de fornecedor, realiza pré-validação estrita
+    (chave de acesso duplicada, CNPJ do destinatário), extrai faturas, resolve fornecedor
+    e sugere o de-para de produtos.
+    IMPORTANTE: Esta etapa NÃO altera o estoque nem cria lançamentos no Contas a Pagar.
+    """
+    raw_xml = ""
+    if xml_file:
+        content_bytes = await xml_file.read()
+        raw_xml = content_bytes.decode("utf-8", errors="ignore")
+    elif xml_content_str:
+        raw_xml = xml_content_str
+
+    if not raw_xml:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Envie um arquivo XML da NF-e ou o conteúdo XML em texto."
+        )
+
+    try:
+        return NfeXmlImportService.parse_and_preview_xml(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            company_id=company_id,
+            xml_content=raw_xml,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro no processamento do XML: {str(e)}")
+
+
+@router.post("/confirm-import", response_model=PurchaseResponse, status_code=status.HTTP_201_CREATED, summary="FASE 2: Confirmação e Efetivação da Entrada de Compra por NF-e")
+def confirm_nfe_xml_import(
+    confirm_in: PurchaseConfirmInput,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    FASE 2: Confirmação explícita do operador após revisar o de-para de produtos e fatores de conversão de unidade.
+    Executa a efetivação atômica no banco de dados:
+    1. Cadastra/atualiza Fornecedor.
+    2. Cria registro da Compra com a Chave de Acesso da NF-e e armazena o XML.
+    3. Atualiza o estoque com a quantidade convertida e atualiza o Custo Médio Ponderado dos produtos.
+    4. Lança os títulos a pagar no módulo financeiro (Contas a Pagar).
+    5. Gera o log de Auditoria e rastreabilidade.
+    """
+    try:
+        purchase = NfeXmlImportService.confirm_and_execute_import(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            company_id=confirm_in.company_id,
+            user_id=current_user.id,
+            confirm_input=confirm_in,
+        )
+        
+        # Carrega relacionamentos para resposta
+        p_loaded = db.scalar(
+            select(Purchase)
+            .options(
+                selectinload(Purchase.items),
+                selectinload(Purchase.supplier),
+                selectinload(Purchase.user),
+            )
+            .where(Purchase.id == purchase.id)
+        )
+        return p_loaded
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao efetivar compra: {str(e)}")
 
 
 def generate_purchase_code() -> str:
@@ -75,7 +161,9 @@ def create_purchase(
 
     for idx, item_in in enumerate(purchase_in.items, start=1):
         product = db.scalar(
-            select(Product).where(
+            select(Product)
+            .options(selectinload(Product.unit))
+            .where(
                 Product.id == item_in.product_id,
                 Product.company_id == company_id
             )
@@ -90,12 +178,13 @@ def create_purchase(
         subtotal += item_total
 
         # Criar item da compra
+        u_code = product.unit.code if product.unit else "UN"
         p_item = PurchaseItem(
             id=uuid.uuid4(),
             product_id=product.id,
             item_number=idx,
             product_name=product.name,
-            unit_code=product.unit_code or "UN",
+            unit_code=u_code,
             quantity=item_in.quantity,
             unit_cost=item_in.unit_cost,
             total_cost=item_total,
@@ -107,7 +196,7 @@ def create_purchase(
         new_qty = prev_qty + item_in.quantity
         product.stock_qty = new_qty
         # Atualizar preço de custo unitário do produto
-        product.cost_price = item_in.unit_cost
+        product.cost = item_in.unit_cost
 
         # Gerar auditoria de estoque
         stk_mov = StockMovement(

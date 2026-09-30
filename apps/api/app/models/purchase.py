@@ -1,6 +1,6 @@
 import uuid
-from typing import TYPE_CHECKING, List
-from sqlalchemy import String, UUID, ForeignKey, Numeric, Text
+from typing import TYPE_CHECKING, List, Optional
+from sqlalchemy import String, UUID, ForeignKey, Numeric, Text, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 from app.models.base import Base, TimestampMixin
@@ -66,6 +66,13 @@ class Purchase(Base, TimestampMixin):
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.0)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Identificação NF-e de Entrada (Modelo 55)
+    access_key: Mapped[str | None] = mapped_column(String(44), nullable=True, index=True)
+    nfe_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nfe_series: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw_xml: Mapped[str | None] = mapped_column(Text, nullable=True)
+    import_status: Mapped[str] = mapped_column(String(30), nullable=False, default="CONFIRMED")  # DRAFT_PREVIEW, CONFIRMED
+
     # Relationships
     tenant: Mapped["Tenant"] = relationship("Tenant")
     company: Mapped["Company"] = relationship("Company")
@@ -107,6 +114,11 @@ class PurchaseItem(Base, TimestampMixin):
     quantity: Mapped[float] = mapped_column(Numeric(12, 3), nullable=False)
     unit_cost: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     total_cost: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+
+    # De-para e conversão de unidades do XML de fornecedor
+    vendor_product_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    unit_conversion_factor: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=1.0)
+    tax_details_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
     purchase: Mapped["Purchase"] = relationship("Purchase", back_populates="items")

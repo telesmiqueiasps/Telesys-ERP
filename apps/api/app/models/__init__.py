@@ -27,6 +27,12 @@ from app.models.finance import (
 )
 from app.models.audit import AuditLog
 from app.models.license import License, LicenseStatus, Device, DeviceStatus
+from app.models.product_fiscal import ProductFiscalProfile, ProductFiscalProfileHistory
+from app.models.company_fiscal import FiscalCompanyConfig, FiscalSeries, FiscalCertificate
+from app.models.fiscal_operation import FiscalOperation, FiscalScenarioRule
+from app.models.nfe_document import NfeDocument, NfeItem, NfeStatus
+from app.models.fiscal_event import FiscalEvent, FiscalInutilization, FiscalEventType
+from app.models.nfe_rejection import NfeRejectionLog
 
 __all__ = [
     "Base",
@@ -71,6 +77,20 @@ __all__ = [
     "LicenseStatus",
     "Device",
     "DeviceStatus",
+    "ProductFiscalProfile",
+    "ProductFiscalProfileHistory",
+    "FiscalCompanyConfig",
+    "FiscalSeries",
+    "FiscalCertificate",
+    "FiscalOperation",
+    "FiscalScenarioRule",
+    "NfeDocument",
+    "NfeItem",
+    "NfeStatus",
+    "FiscalEvent",
+    "FiscalInutilization",
+    "FiscalEventType",
+    "NfeRejectionLog",
 ]
 
 

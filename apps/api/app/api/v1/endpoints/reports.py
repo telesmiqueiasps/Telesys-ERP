@@ -141,8 +141,8 @@ def get_top_products_report(
     for row in results:
         pid, name, qty, rev = row.product_id, row.product_name, float(row.total_qty or 0), float(row.total_revenue or 0)
         prod = db.get(Product, pid)
-        barcode = prod.barcode if prod else None
-        cost_price = float(prod.cost_price) if prod and prod.cost_price else 0.0
+        barcode = (prod.barcodes[0].barcode if (prod and prod.barcodes) else (prod.code if prod else None))
+        cost_price = float(prod.cost) if (prod and prod.cost) else 0.0
 
         total_cost = qty * cost_price
         profit = rev - total_cost
@@ -200,7 +200,7 @@ def get_dre_statement_report(
     for s in sales:
         for item in s.items:
             prod = db.get(Product, item.product_id)
-            cost = float(prod.cost_price) if prod and prod.cost_price else 0.0
+            cost = float(prod.cost) if (prod and prod.cost) else 0.0
             cmv += float(item.quantity) * cost
 
     gross_profit = net_revenue - cmv
@@ -254,7 +254,7 @@ def get_inventory_report(
     """
     stmt = (
         select(Product)
-        .options(selectinload(Product.category), selectinload(Product.unit))
+        .options(selectinload(Product.category), selectinload(Product.unit), selectinload(Product.barcodes))
         .where(
             Product.company_id == company_id,
             Product.tenant_id == current_user.tenant_id,
@@ -273,9 +273,9 @@ def get_inventory_report(
 
     report_items = []
     for p in products:
-        stock = float(p.current_stock or 0.0)
-        min_stk = float(p.min_stock or 0.0)
-        cost = float(p.cost_price or 0.0)
+        stock = float(p.stock_qty or 0.0)
+        min_stk = float(p.min_stock_qty or 0.0)
+        cost = float(p.cost or 0.0)
         price = float(p.price or 0.0)
 
         cost_val = stock * cost
@@ -298,12 +298,13 @@ def get_inventory_report(
 
         cat_name = p.category.name if p.category else "Sem Categoria"
         unit_code = p.unit.code if p.unit else "UN"
+        prod_barcode = p.barcodes[0].barcode if p.barcodes else (p.code or None)
 
         report_items.append(
             InventoryReportItem(
                 product_id=str(p.id),
                 product_name=p.name,
-                barcode=p.barcode,
+                barcode=prod_barcode,
                 category_name=cat_name,
                 unit_code=unit_code,
                 current_stock=round(stock, 3),

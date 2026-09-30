@@ -12,6 +12,8 @@ import {
   Building,
   Key,
   HardDrive,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,13 +26,15 @@ import { UserModal } from "@/components/UserModal";
 import { RoleModal } from "@/components/RoleModal";
 import { LicenseModal } from "@/components/LicenseModal";
 import { BackupModal } from "@/components/BackupModal";
+import { CompanyFiscalSettingsCard } from "@/components/CompanyFiscalSettingsCard";
+import { FiscalOperationsSettingsCard } from "@/components/FiscalOperationsSettingsCard";
 import { useAuthStore } from "@/store/useAuthStore";
 
 
 
 export function SettingsView() {
   const { activeCompany } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<"companies" | "users" | "roles">("companies");
+  const [activeTab, setActiveTab] = useState<"companies" | "users" | "roles" | "fiscal" | "fiscal_operations">("companies");
 
   // Companies state
   const [companies, setCompanies] = useState<CompanyItem[]>([]);
@@ -232,6 +236,26 @@ export function SettingsView() {
               }`}
             >
               <Shield className="h-4 w-4 text-primary" /> Cargos & Permissões ({roles.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("fiscal")}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "fiscal"
+                  ? "bg-card text-foreground shadow-sm border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FileText className="h-4 w-4 text-primary" /> Configuração Fiscal (DF-e / A1)
+            </button>
+            <button
+              onClick={() => setActiveTab("fiscal_operations")}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "fiscal_operations"
+                  ? "bg-card text-foreground shadow-sm border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FileSpreadsheet className="h-4 w-4 text-primary" /> Operações Fiscais & CFOP
             </button>
           </div>
 
@@ -488,6 +512,12 @@ export function SettingsView() {
           )}
         </Card>
       )}
+
+      {/* Tab 4: Fiscal Settings */}
+      {activeTab === "fiscal" && <CompanyFiscalSettingsCard />}
+
+      {/* Tab 5: Fiscal Operations & Scenario Matrix */}
+      {activeTab === "fiscal_operations" && <FiscalOperationsSettingsCard />}
 
       {/* Modals */}
       <CompanyModal

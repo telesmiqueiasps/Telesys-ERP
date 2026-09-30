@@ -13,6 +13,7 @@ import {
   Edit,
   Trash2,
   SlidersHorizontal,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/apiClient";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProductModal } from "@/components/ProductModal";
+import { ProductFiscalModal } from "@/components/ProductFiscalModal";
 import { StockAdjustmentModal } from "@/components/StockAdjustmentModal";
 import { localDbManager } from "@/services/localDb/databaseManager";
 import { StockView } from "@/pages/StockView";
@@ -57,6 +59,7 @@ export function ProductsView() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDetail | null>(null);
+  const [fiscalModalProduct, setFiscalModalProduct] = useState<{ id: string; name: string } | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   const fetchProducts = async () => {
@@ -372,6 +375,16 @@ export function ProductsView() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-7 w-7 text-purple-500 hover:text-purple-600 hover:bg-purple-500/10"
+                                onClick={() => setFiscalModalProduct({ id: p.id, name: p.name })}
+                                title="Perfil Fiscal (NCM, CST, CFOP, Impostos, RTC)"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-7 w-7 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
                                 onClick={() => setIsStockModalOpen(true)}
                                 title="Ajustar estoque"
@@ -428,6 +441,17 @@ export function ProductsView() {
             onSuccess={fetchProducts}
             products={products}
           />
+
+          {/* Product Fiscal Profile Modal */}
+          {fiscalModalProduct && (
+            <ProductFiscalModal
+              isOpen={Boolean(fiscalModalProduct)}
+              onClose={() => setFiscalModalProduct(null)}
+              productId={fiscalModalProduct.id}
+              productName={fiscalModalProduct.name}
+              onSuccess={fetchProducts}
+            />
+          )}
         </>
       )}
     </div>

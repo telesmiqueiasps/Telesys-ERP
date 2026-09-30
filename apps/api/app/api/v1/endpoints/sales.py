@@ -192,6 +192,24 @@ def create_sale(
 
     db.commit()
 
+    # 6. Emissão Mandatória da NFC-e (Modelo 65) no Motor Fiscal
+    try:
+        from app.services.nfce_service import NfceService
+        NfceService.emit_nfce_for_sale(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            company_id=target_company_id,
+            sale=sale,
+            issue_type=1,
+            user_id=current_user.id,
+        )
+    except Exception as e:
+        # Se houver erro impeditivo no cadastro fiscal, repassa como exceção de validação fiscal
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Erro de validação fiscal ao emitir documento para a venda: {str(e)}"
+        )
+
     # Reload sale with all relationships
     sale = db.scalar(
         select(Sale)

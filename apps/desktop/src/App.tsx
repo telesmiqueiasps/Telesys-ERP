@@ -7,6 +7,7 @@ import { ProductsView } from "@/pages/ProductsView";
 import { PurchasesView } from "@/pages/PurchasesView";
 import { CustomersView } from "@/pages/CustomersView";
 import { FinanceView } from "@/pages/FinanceView";
+import { CashView } from "@/pages/CashView";
 import { AuditView } from "@/pages/AuditView";
 import { PdvView } from "@/pages/PdvView";
 import { SettingsView } from "@/pages/SettingsView";
@@ -27,6 +28,8 @@ export function App() {
         return <DashboardView onNavigate={setActiveModule} />;
       case "pdv":
         return <PdvView />;
+      case "caixa":
+        return <CashView />;
       case "estoque":
         return <ProductsView />;
       case "compras":

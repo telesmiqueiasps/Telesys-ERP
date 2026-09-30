@@ -1,5 +1,5 @@
 import uuid
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Boolean, UUID, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
@@ -7,6 +7,7 @@ from app.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.tenant import Tenant
     from app.models.company import Company
+    from app.models.product_fiscal import ProductFiscalProfile
 
 
 class ProductCategory(Base, TimestampMixin):
@@ -133,3 +134,4 @@ class Product(Base, TimestampMixin):
     category: Mapped["ProductCategory | None"] = relationship("ProductCategory", back_populates="products")
     unit: Mapped["ProductUnit | None"] = relationship("ProductUnit", back_populates="products")
     barcodes: Mapped[List["ProductBarcode"]] = relationship("ProductBarcode", back_populates="product", cascade="all, delete-orphan")
+    fiscal_profile: Mapped[Optional["ProductFiscalProfile"]] = relationship("ProductFiscalProfile", back_populates="product", uselist=False, cascade="all, delete-orphan")
