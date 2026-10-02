@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/apiClient";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   CompanyFiscalConfig,
   CompanyFiscalConfigInput,
@@ -52,8 +53,9 @@ export const companyFiscalService = {
     formData.append("password", password);
 
     // Usa fetch diretamente para envio Multipart FormData sem Content-Type JSON
-    const token = localStorage.getItem("telesys_token");
-    const res = await fetch(`http://localhost:8000/api/v1/company-fiscal/certificate/upload?company_id=${companyId}`, {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+    const token = useAuthStore.getState().token || localStorage.getItem("telesys_token");
+    const res = await fetch(`${API_BASE_URL}/company-fiscal/certificate/upload?company_id=${companyId}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token || ""}`,

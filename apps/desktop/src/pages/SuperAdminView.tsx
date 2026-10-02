@@ -363,7 +363,7 @@ export function SuperAdminView() {
                 <select
                   value={editingPlan}
                   onChange={(e) => setEditingPlan(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 >
                   <option value="MEI">MEI (Até 2 Terminais)</option>
                   <option value="PRO">PRO (Até 5 Terminais)</option>
@@ -379,7 +379,7 @@ export function SuperAdminView() {
                   max={50}
                   value={editingMaxDevices}
                   onChange={(e) => setEditingMaxDevices(parseInt(e.target.value) || 1)}
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white font-mono focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:border-blue-500"
                 />
               </div>
 

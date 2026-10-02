@@ -94,7 +94,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value, company_name: e.target.value })}
                   placeholder="Ex: Grupo Supermercados Silva"
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -105,7 +105,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                   value={formData.document || ""}
                   onChange={(e) => setFormData({ ...formData, document: e.target.value, cnpj: e.target.value })}
                   placeholder="00.000.000/0001-00"
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 font-mono"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                 />
               </div>
             </div>
@@ -127,7 +127,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                   value={formData.admin_name}
                   onChange={(e) => setFormData({ ...formData, admin_name: e.target.value })}
                   placeholder="Ex: João da Silva"
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -139,7 +139,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                   value={formData.admin_email}
                   onChange={(e) => setFormData({ ...formData, admin_email: e.target.value })}
                   placeholder="admin@empresa.com.br"
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 font-mono"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                 />
               </div>
 
@@ -151,7 +151,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                   value={formData.admin_password}
                   onChange={(e) => setFormData({ ...formData, admin_password: e.target.value })}
                   placeholder="******"
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 font-mono"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                 />
               </div>
             </div>
@@ -170,7 +170,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                 <select
                   value={formData.plan_name}
                   onChange={(e) => setFormData({ ...formData, plan_name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 >
                   <option value="MEI">Plano MEI (Até 2 Terminais - R$ 99/mês)</option>
                   <option value="PRO">Plano PRO (Até 5 Terminais - R$ 199/mês)</option>
@@ -186,7 +186,7 @@ export const TenantCreateModal: React.FC<TenantCreateModalProps> = ({ isOpen, on
                   max={50}
                   value={formData.max_devices}
                   onChange={(e) => setFormData({ ...formData, max_devices: parseInt(e.target.value) || 1 })}
-                  className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500 font-mono"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                 />
               </div>
             </div>

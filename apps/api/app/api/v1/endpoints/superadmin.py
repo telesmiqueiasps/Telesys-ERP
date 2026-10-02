@@ -191,10 +191,9 @@ def create_tenant(
     new_user = User(
         id=user_id,
         tenant_id=tenant_id,
-        company_id=company_id,
         name=data.admin_name,
         email=data.admin_email,
-        hashed_password=hashed_pwd,
+        password_hash=hashed_pwd,
         is_active=True,
         is_superuser=False,
     )
