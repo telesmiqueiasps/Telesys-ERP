@@ -12,15 +12,21 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS Middleware Configuration
-if settings.CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS Middleware Configuration (Suporte a Tauri Desktop, Web Browser e Mobile)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:1420",
+        "tauri://localhost",
+        "https://tauri.localhost",
+        "http://tauri.localhost",
+    ],
+    allow_origin_regex=r".*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include API v1 Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
