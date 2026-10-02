@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.company import Company
 from app.models.license import License, LicenseStatus, Device, DeviceStatus
+from app.models.rbac import Role, Permission
 from app.schemas.license import LicenseResponse, DeviceResponse
 from app.schemas.superadmin import (
     TenantAdminSummary,
@@ -198,6 +199,11 @@ def create_tenant(
         is_superuser=False,
     )
     db.add(new_user)
+
+    # 3.1 Role & Permissions (Seed 6 default system roles: Administrador, Gestor, Supervisor, Operador de Caixa, Financeiro, Estoquista)
+    from app.initial_data import seed_tenant_default_roles
+    roles_map = seed_tenant_default_roles(db, tenant_id)
+    new_user.roles.append(roles_map["Administrador"])
 
     # 4. License
     key_suffix = str(tenant_id).replace("-", "")[:8].upper()

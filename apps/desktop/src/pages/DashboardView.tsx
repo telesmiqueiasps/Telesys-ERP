@@ -148,8 +148,8 @@ export function DashboardView({ onNavigate }: DashboardViewProps) {
         </Card>
       </div>
 
-      {/* Local Database Status & Architecture Component */}
-      <LocalDbStatusCard />
+      {/* Local Database Status & Architecture Component (SuperAdmin Tech Debug) */}
+      {user?.is_superuser && <LocalDbStatusCard />}
 
       {/* Functional Modules Section */}
       <div className="space-y-3">

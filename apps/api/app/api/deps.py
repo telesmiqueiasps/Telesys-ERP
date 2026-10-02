@@ -74,6 +74,29 @@ def get_user_permissions(db: Session, user: User) -> List[str]:
         all_perms = db.scalars(select(Permission.code)).all()
         return list(all_perms)
 
+    # Auto-heal: If user has no roles assigned yet, assign/ensure the Tenant's Administrador role
+    if not user.roles:
+        admin_role = db.scalar(
+            select(Role).where(
+                Role.tenant_id == user.tenant_id,
+                Role.name == "Administrador"
+            )
+        )
+        if not admin_role:
+            all_perms = list(db.scalars(select(Permission)).all())
+            admin_role = Role(
+                tenant_id=user.tenant_id,
+                name="Administrador",
+                description="Acesso total às funcionalidades do sistema",
+                is_system=True,
+                permissions=all_perms
+            )
+            db.add(admin_role)
+            db.flush()
+
+        user.roles.append(admin_role)
+        db.commit()
+
     # Collect permissions from user's assigned roles
     perm_codes = set()
     for role in user.roles:

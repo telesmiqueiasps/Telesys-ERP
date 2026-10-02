@@ -30,3 +30,11 @@ class UserMeResponse(BaseModel):
     tenant: TenantResponse
     companies: List[CompanyResponse] = []
     permissions: List[str] = []
+
+
+class QuickUserResponse(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    role_name: Optional[str] = "Usuário"
+    is_active: bool = True

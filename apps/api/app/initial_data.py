@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -20,22 +21,27 @@ SYSTEM_PERMISSIONS = [
     {"code": "vendas.cancelar", "name": "Cancelar Vendas", "module": "vendas", "description": "Permite cancelar vendas realizadas"},
     {"code": "vendas.desconto", "name": "Aplicar Descontos em Vendas", "module": "vendas", "description": "Permite aplicar descontos no carrinho"},
 
-    # Estoque
+    # Estoque & Produtos
     {"code": "estoque.visualizar", "name": "Visualizar Estoque", "module": "estoque", "description": "Permite visualizar saldos de estoque"},
     {"code": "estoque.ajuste", "name": "Realizar Ajuste de Estoque", "module": "estoque", "description": "Permite alterar saldos manualmente"},
     {"code": "estoque.movimento", "name": "Registrar Movimentações", "module": "estoque", "description": "Permite dar entradas e saídas de estoque"},
-
-    # Produtos
     {"code": "produtos.visualizar", "name": "Visualizar Produtos", "module": "produtos", "description": "Permite visualizar catálogo de produtos"},
     {"code": "produtos.editar", "name": "Gerenciar Produtos", "module": "produtos", "description": "Permite cadastrar e alterar produtos"},
+
+    # Compras
+    {"code": "compras.gerenciar", "name": "Gerenciar Compras e Entradas", "module": "compras", "description": "Permite importar XML e dar entrada de notas de compra"},
 
     # Financeiro
     {"code": "financeiro.visualizar", "name": "Visualizar Financeiro", "module": "financeiro", "description": "Permite visualizar contas e movimentações de caixa"},
     {"code": "financeiro.baixar", "name": "Baixar Títulos Financeiros", "module": "financeiro", "description": "Permite dar baixa em contas a pagar/receber"},
 
-    # Usuários e Sistema
-    {"code": "usuarios.gerenciar", "name": "Gerenciar Usuários e Cargos", "module": "usuarios", "description": "Permite gerenciar usuários, empresas e funções"},
-    {"code": "sistema.configurar", "name": "Configurações de Sistema", "module": "sistema", "description": "Permite alterar parâmetros globais do sistema"},
+    # Relatórios e Clientes
+    {"code": "relatorios.visualizar", "name": "Visualizar Relatórios e BI", "module": "relatorios", "description": "Permite visualizar relatórios gerenciais e estatísticas"},
+    {"code": "clientes.gerenciar", "name": "Gerenciar Clientes e Fornecedores", "module": "cadastros", "description": "Permite cadastrar e alterar clientes e fornecedores"},
+
+    # Administração, Usuários e Filiais (Exclusivo do Admin do Tenant)
+    {"code": "usuarios.gerenciar", "name": "Gerenciar Usuários, Cargos e Filiais", "module": "usuarios", "description": "Permite criar/editar usuários, cargos, permissões e filiais"},
+    {"code": "sistema.configurar", "name": "Configurações Globais de Sistema", "module": "sistema", "description": "Permite alterar parâmetros globais do sistema e fiscais"},
 ]
 
 DEFAULT_UNITS = [
@@ -52,6 +58,94 @@ DEFAULT_CATEGORIES = [
     {"name": "Higiene e Limpeza", "description": "Produtos de limpeza doméstica e higiene pessoal"},
     {"name": "Diversos", "description": "Produtos variados"},
 ]
+
+
+def seed_tenant_default_roles(db: Session, tenant_id: Any) -> dict:
+    """
+    Cadastra os 6 cargos padrão do sistema para o tenant informado:
+    - Administrador (Dono do Sistema no Tenant - acesso total incluindo usuarios.gerenciar)
+    - Gestor (Gestor da Empresa - acesso operacional total, sem criar usuários/filiais)
+    - Supervisor (Supervisor de Loja)
+    - Operador de Caixa (Frente de Caixa / PDV)
+    - Financeiro (Contas a Pagar/Receber e Caixa)
+    - Estoquista (Controle de Estoque e Compras)
+    """
+    # 1. Carregar/Garantir Permissões
+    perms_by_code = {}
+    for p_data in SYSTEM_PERMISSIONS:
+        perm = db.scalar(select(Permission).where(Permission.code == p_data["code"]))
+        if not perm:
+            perm = Permission(**p_data)
+            db.add(perm)
+            db.flush()
+        perms_by_code[perm.code] = perm
+
+    # 2. Definições dos Cargos Padrão
+    roles_definitions = [
+        {
+            "name": "Administrador",
+            "description": "Acesso total às funcionalidades, gerenciamento de usuários, cargos e filiais",
+            "codes": list(perms_by_code.keys()),
+        },
+        {
+            "name": "Gestor",
+            "description": "Acesso operacional completo ao sistema (Vendas, Estoque, Financeiro, Fiscal e Relatórios), exceto gerenciar usuários/filiais",
+            "codes": [code for code in perms_by_code.keys() if code != "usuarios.gerenciar"],
+        },
+        {
+            "name": "Supervisor",
+            "description": "Supervisão de loja, descontos, cancelamentos, consulta de estoque e relatórios",
+            "codes": [
+                "vendas.visualizar", "vendas.criar", "vendas.cancelar", "vendas.desconto",
+                "estoque.visualizar", "estoque.ajuste", "produtos.visualizar",
+                "financeiro.visualizar", "relatorios.visualizar", "clientes.gerenciar"
+            ],
+        },
+        {
+            "name": "Operador de Caixa",
+            "description": "Acesso à frente de caixa (PDV), emissão de vendas e descontos autorizados",
+            "codes": [
+                "vendas.visualizar", "vendas.criar", "vendas.desconto", "vendas.cancelar"
+            ],
+        },
+        {
+            "name": "Financeiro",
+            "description": "Gestão de contas a pagar/receber, baixas financeiras, caixa e relatórios",
+            "codes": [
+                "financeiro.visualizar", "financeiro.baixar", "relatorios.visualizar", "clientes.gerenciar"
+            ],
+        },
+        {
+            "name": "Estoquista",
+            "description": "Gestão de catálogo de produtos, ajustes de estoque e entradas de compras/XML",
+            "codes": [
+                "estoque.visualizar", "estoque.ajuste", "estoque.movimento",
+                "produtos.visualizar", "produtos.editar", "compras.gerenciar"
+            ],
+        },
+    ]
+
+    created_roles = {}
+    for r_def in roles_definitions:
+        role = db.scalar(
+            select(Role).where(Role.tenant_id == tenant_id, Role.name == r_def["name"])
+        )
+        role_perms = [perms_by_code[c] for c in r_def["codes"] if c in perms_by_code]
+        if not role:
+            role = Role(
+                tenant_id=tenant_id,
+                name=r_def["name"],
+                description=r_def["description"],
+                is_system=True,
+                permissions=role_perms,
+            )
+            db.add(role)
+            db.flush()
+        else:
+            role.permissions = role_perms
+        created_roles[role.name] = role
+
+    return created_roles
 
 
 def init_db(db: Session) -> None:
@@ -105,39 +199,9 @@ def init_db(db: Session) -> None:
         db.flush()
         logger.info(f"Empresa inicial criada: {company.name}")
 
-    # 5. Seed Product Categories
-    categories_map = {}
-    for c_data in DEFAULT_CATEGORIES:
-        cat = db.scalar(
-            select(ProductCategory).where(
-                ProductCategory.tenant_id == tenant.id,
-                ProductCategory.name == c_data["name"]
-            )
-        )
-        if not cat:
-            cat = ProductCategory(
-                tenant_id=tenant.id,
-                company_id=company.id,
-                name=c_data["name"],
-                description=c_data["description"]
-            )
-            db.add(cat)
-            db.flush()
-            logger.info(f"Categoria de produtos criada: {cat.name}")
-        categories_map[cat.name] = cat
-
-    # 6. Seed Default Admin Role
-    admin_role = db.scalar(select(Role).where(Role.tenant_id == tenant.id, Role.name == "Administrador"))
-    if not admin_role:
-        admin_role = Role(
-            tenant_id=tenant.id,
-            name="Administrador",
-            description="Acesso total às funcionalidades do sistema",
-            is_system=True,
-            permissions=list(permissions_map.values())
-        )
-        db.add(admin_role)
-        db.flush()
+    # 5. Seed Default Tenant System Roles
+    roles_map = seed_tenant_default_roles(db, tenant.id)
+    admin_role = roles_map["Administrador"]
 
     # 7. Seed Super Admin User
     admin_user = db.scalar(select(User).where(User.email == "admin@telesys.com.br"))

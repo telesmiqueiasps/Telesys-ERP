@@ -16,10 +16,13 @@ from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
     RefreshTokenRequest,
-    UserMeResponse
+    UserMeResponse,
+    QuickUserResponse,
 )
 from app.schemas.tenant import TenantResponse
 from app.schemas.company import CompanyResponse
+from uuid import UUID
+from typing import Optional, List
 
 router = APIRouter()
 
@@ -145,3 +148,35 @@ def get_me(
         companies=[CompanyResponse.model_validate(c) for c in companies],
         permissions=permissions
     )
+
+
+@router.get("/quick-users", response_model=List[QuickUserResponse], summary="Listar Usuários para Cards de Login Rápido")
+def get_quick_users(
+    tenant_id: Optional[str] = None,
+    db: Session = Depends(deps.get_db)
+) -> Any:
+    """
+    Retorna os usuários ativos para exibição em cards interativos na tela de login local.
+    """
+    stmt = select(User).where(User.is_active == True)
+    if tenant_id:
+        try:
+            stmt = stmt.where(User.tenant_id == UUID(tenant_id))
+        except Exception:
+            pass
+            
+    users = db.scalars(stmt.order_by(User.name)).all()
+    
+    result = []
+    for u in users:
+        role_name = u.roles[0].name if u.roles else ("Super Admin" if u.is_superuser else "Usuário")
+        result.append(
+            QuickUserResponse(
+                id=u.id,
+                name=u.name,
+                email=u.email,
+                role_name=role_name,
+                is_active=u.is_active
+            )
+        )
+    return result
