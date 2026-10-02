@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS local_session (
 """)
 
 # Insert initial settings record
-cur_master.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('installation_version', '0.1.0')")
+cur_master.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('installation_version', '1.0.0')")
 cur_master.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('local_path', ?)", (DATA_DIR,))
 conn_master.commit()
 conn_master.close()

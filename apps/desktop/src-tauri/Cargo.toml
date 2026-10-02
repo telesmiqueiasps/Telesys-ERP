@@ -1,6 +1,6 @@
 [package]
 name = "telesys-desktop"
-version = "0.1.0"
+version = "1.0.0"
 description = "Telesys ERP Desktop Application"
 authors = ["Telesys Team"]
 edition = "2021"

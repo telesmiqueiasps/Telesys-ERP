@@ -31,7 +31,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ isOpen, onClose, updat
 
       <div className="space-y-2 text-xs text-slate-300">
         <p className="text-slate-400">
-          Uma nova atualização do <span className="font-semibold text-white">Telesys ERP + PDV</span> está pronta.
+          Uma nova atualização do <span className="font-semibold text-white">Telesys Tecnologia</span> está pronta.
         </p>
 
         <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 font-mono text-[11px] text-slate-300 max-h-36 overflow-y-auto">

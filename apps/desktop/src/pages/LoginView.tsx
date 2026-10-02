@@ -167,7 +167,7 @@ export function LoginView() {
           </div>
 
           <Badge variant="outline" className="border-slate-700 bg-slate-800/60 text-slate-300">
-            v0.1.0 Cloud Foundation
+            v1.0.0 Cloud Foundation
           </Badge>
         </div>
 
@@ -206,7 +206,7 @@ export function LoginView() {
 
         {/* Footer info */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-500 border-t border-slate-800/80 pt-6">
-          <span>&copy; 2026 Telesys ERP. Todos os direitos reservados.</span>
+          <span>&copy; 2026 Telesys Tecnologia. Todos os direitos reservados.</span>
           <div className="flex items-center gap-2 text-emerald-400 font-medium">
             <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             Terminal Conectado
@@ -223,7 +223,7 @@ export function LoginView() {
               <Building2 className="h-4 w-4" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold tracking-tight text-xs text-foreground">Telesys ERP Terminal</span>
+              <span className="font-bold tracking-tight text-xs text-foreground">Telesys Tecnologia Terminal</span>
               <span className="text-[10px] text-muted-foreground">Empresa Matriz Pré-selecionada</span>
             </div>
           </div>

@@ -111,7 +111,7 @@ export function AppLayout({ children, activeModule = "dashboard", onNavigate }: 
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col truncate">
-                  <span className="font-bold text-sm tracking-tight truncate">Telesys ERP</span>
+                  <span className="font-bold text-sm tracking-tight truncate">Telesys Tecnologia</span>
                   <span className="text-[10px] text-muted-foreground truncate">Desktop Local-First</span>
                 </div>
               )}
