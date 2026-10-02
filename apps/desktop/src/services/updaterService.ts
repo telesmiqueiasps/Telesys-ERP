@@ -2,7 +2,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useAuthStore } from "@/store/useAuthStore";
 import { UpdateCheckResponse } from "@/types/updater";
 
-export const CURRENT_APP_VERSION = "1.0.0";
+export const CURRENT_APP_VERSION = "0.1.0";
 
 export const updaterService = {
   getAppVersion(): string {
