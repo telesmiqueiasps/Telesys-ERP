@@ -106,10 +106,16 @@ class NfeXmlBuilder:
             issue_dh += "-03:00"
         ET.SubElement(ide, "dhEmi").text = issue_dh
 
+        addr = doc.issuer_address or {}
+        default_cmun = "2516201" if doc.issuer_uf.upper() == "PB" else "3550308"
+        default_xmun = "Sousa" if doc.issuer_uf.upper() == "PB" else "Sao Paulo"
+        cmun_val = str(addr.get("cMun", default_cmun))
+        xmun_val = str(addr.get("xMun", default_xmun))
+
         tpNF_val = str(getattr(doc, "operation_type_nfe", 1))
         ET.SubElement(ide, "tpNF").text = tpNF_val
         ET.SubElement(ide, "idDest").text = "1" if doc.issuer_uf.upper() == doc.recipient_uf.upper() else "2"  # 1=Interna, 2=Interestadual
-        ET.SubElement(ide, "cMunFG").text = "3550308"  # Ex: São Paulo
+        ET.SubElement(ide, "cMunFG").text = cmun_val
         
         # tpImp: 1=DANFE Retrato (Modelo 55), 4=DANFE NFC-e (Modelo 65)
         tpImp_val = "4" if model_str == "65" else "1"
@@ -137,14 +143,13 @@ class NfeXmlBuilder:
             ET.SubElement(emit, "xFant").text = doc.issuer_trade_name[:60]
 
         enderEmit = ET.SubElement(emit, "enderEmit")
-        addr = doc.issuer_address or {}
         ET.SubElement(enderEmit, "xLgr").text = str(addr.get("xLgr", "Rua Principal"))[:60]
         ET.SubElement(enderEmit, "nro").text = str(addr.get("nro", "100"))[:60]
         ET.SubElement(enderEmit, "xBairro").text = str(addr.get("xBairro", "Centro"))[:60]
-        ET.SubElement(enderEmit, "cMun").text = str(addr.get("cMun", "3550308"))
-        ET.SubElement(enderEmit, "xMun").text = str(addr.get("xMun", "Sao Paulo"))[:60]
+        ET.SubElement(enderEmit, "cMun").text = cmun_val
+        ET.SubElement(enderEmit, "xMun").text = xmun_val[:60]
         ET.SubElement(enderEmit, "UF").text = doc.issuer_uf.upper()
-        ET.SubElement(enderEmit, "CEP").text = str(addr.get("CEP", "01001000")).replace("-", "")
+        ET.SubElement(enderEmit, "CEP").text = str(addr.get("CEP", "58800000")).replace("-", "")
 
         if doc.issuer_ie:
             ET.SubElement(emit, "IE").text = re.sub(r"\D", "", doc.issuer_ie)

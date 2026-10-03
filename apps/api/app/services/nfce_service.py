@@ -61,8 +61,27 @@ class NfceService:
         fiscal_config = db.scalar(select(FiscalCompanyConfig).where(FiscalCompanyConfig.company_id == company_id, FiscalCompanyConfig.tenant_id == tenant_id))
         environment_int = 1 if (fiscal_config and fiscal_config.environment == "PRODUCTION") else 2
         emit_crt = fiscal_config.crt if fiscal_config else 1
-        emit_uf = getattr(company, "state", None) or getattr(company, "uf", None) or "SP"
-        emit_ie = getattr(company, "state_registration", None) or getattr(company, "ie", None) or "ISENTO"
+
+        ibge_code = str(fiscal_config.ibge_city_code).strip() if (fiscal_config and fiscal_config.ibge_city_code) else "2516201"
+        uf_prefix_map = {
+            "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP", "17": "TO",
+            "21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE", "29": "BA",
+            "31": "MG", "32": "ES", "33": "RJ", "35": "SP",
+            "41": "PR", "42": "SC", "43": "RS",
+            "50": "MS", "51": "MT", "52": "GO", "53": "DF"
+        }
+        emit_uf = uf_prefix_map.get(ibge_code[:2]) or getattr(company, "state", None) or getattr(company, "uf", None) or "PB"
+        emit_ie = getattr(company, "state_registration", None) or (fiscal_config.state_tax_number if fiscal_config else None) or "ISENTO"
+
+        issuer_address = {
+            "xLgr": getattr(company, "address", None) or getattr(company, "street", None) or "Rua Principal",
+            "nro": getattr(company, "number", None) or "100",
+            "xBairro": getattr(company, "neighborhood", None) or "Centro",
+            "cMun": ibge_code,
+            "xMun": getattr(company, "city", None) or "Sousa",
+            "UF": emit_uf,
+            "CEP": getattr(company, "zip_code", None) or "58800000",
+        }
 
         # Token CSC
         csc_id = fiscal_config.nfc_csc_id if (fiscal_config and fiscal_config.nfc_csc_id) else "000001"
@@ -263,6 +282,7 @@ class NfceService:
             issuer_ie=emit_ie,
             issuer_crt=emit_crt,
             issuer_uf=emit_uf,
+            issuer_address=issuer_address,
             recipient_cnpj_cpf=re.sub(r"\D", "", rec_doc),
             recipient_name=rec_name,
             recipient_uf=emit_uf,
@@ -282,9 +302,6 @@ class NfceService:
         setattr(nfe_doc, "payments_info", payments_data)
 
         # 7. Gera XML e realiza a Assinatura Digital A1
-        raw_xml = NfeXmlBuilder.build_nfe_xml(nfe_doc)
-        nfe_doc.raw_xml = raw_xml
-
         cert_record = db.scalar(
             select(FiscalCertificate).where(
                 FiscalCertificate.company_id == company_id,
@@ -293,7 +310,8 @@ class NfceService:
             )
         )
 
-        signed_xml = raw_xml
+        cert_bytes = None
+        cert_pwd = None
         if cert_record:
             cert_bytes = decrypt_data(cert_record.certificate_data_encrypted)
             if isinstance(cert_bytes, str):
@@ -301,6 +319,12 @@ class NfceService:
             cert_pwd = decrypt_data(cert_record.password_encrypted)
             if isinstance(cert_pwd, bytes):
                 cert_pwd = cert_pwd.decode("utf-8")
+
+        raw_xml = NfeXmlBuilder.build_nfe_xml(nfe_doc)
+        nfe_doc.raw_xml = raw_xml
+
+        signed_xml = raw_xml
+        if cert_bytes and cert_pwd:
             signed_xml = NfeSigner.sign_nfe_xml(raw_xml, cert_bytes, cert_pwd)
 
         nfe_doc.signed_xml = signed_xml
@@ -320,6 +344,9 @@ class NfceService:
                     uf=emit_uf,
                     environment=environment_int,
                     payload_xml=signed_xml,
+                    doc_model="65",
+                    certificate_pfx_bytes=cert_bytes,
+                    certificate_password=cert_pwd,
                 )
                 response = adapter.send_request(request)
 
