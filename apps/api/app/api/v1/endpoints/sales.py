@@ -190,7 +190,7 @@ def create_sale(
         )
         db.add(cash_mov)
 
-    db.commit()
+    db.flush()
 
     # 6. Emissão Mandatória da NFC-e (Modelo 65) no Motor Fiscal
     try:
@@ -203,8 +203,10 @@ def create_sale(
             issue_type=1,
             user_id=current_user.id,
         )
+        db.commit()
     except Exception as e:
-        # Se houver erro impeditivo no cadastro fiscal, repassa como exceção de validação fiscal
+        db.rollback()
+        # Se houver erro impeditivo no cadastro fiscal, cancela e desfaz qualquer alteração de estoque/caixa
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Erro de validação fiscal ao emitir documento para a venda: {str(e)}"

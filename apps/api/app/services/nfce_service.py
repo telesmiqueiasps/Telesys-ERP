@@ -7,6 +7,8 @@ from sqlalchemy import select
 
 from app.models.company import Company
 from app.models.company_fiscal import FiscalCompanyConfig, FiscalSeries, FiscalCertificate
+from app.models.product import Product
+from app.models.product_fiscal import ProductFiscalProfile
 from app.models.sale import Sale, SaleItem, SalePayment
 from app.models.nfe_document import NfeDocument, NfeItem, NfeStatus
 from app.models.nfe_rejection import NfeRejectionLog
@@ -105,14 +107,46 @@ class NfceService:
             vDesc_item = float(sale_item.discount_amount or 0.0)
             vProd_item = qCom * vUnCom
 
+            # Busca Perfil Fiscal cadastrado para o produto/empresa
+            fiscal_prof = db.scalar(
+                select(ProductFiscalProfile).where(
+                    ProductFiscalProfile.product_id == sale_item.product_id,
+                    ProductFiscalProfile.company_id == company_id,
+                )
+            )
+
+            # Determina CST/CSOSN e Alíquotas reais do produto
+            if fiscal_prof and fiscal_prof.cst_csosn:
+                item_cst_csosn = fiscal_prof.cst_csosn.strip()
+            elif emit_crt in [1, 2]:
+                item_cst_csosn = "102"
+            else:
+                item_cst_csosn = "40"  # Isento padrão no Regime Normal se não configurado
+
+            item_origem = str(fiscal_prof.origin) if (fiscal_prof and fiscal_prof.origin is not None) else "0"
+            item_icms_rate = (
+                float(fiscal_prof.icms_rate)
+                if (fiscal_prof and fiscal_prof.icms_rate is not None)
+                else (0.0 if item_cst_csosn in ["40", "41", "50", "102", "400", "500"] else 18.0)
+            )
+            item_pis_cst = fiscal_prof.pis_cst.strip() if (fiscal_prof and fiscal_prof.pis_cst) else "07"
+            item_pis_rate = float(fiscal_prof.pis_rate) if (fiscal_prof and fiscal_prof.pis_rate is not None) else 0.0
+            item_cofins_cst = fiscal_prof.cofins_cst.strip() if (fiscal_prof and fiscal_prof.cofins_cst) else "07"
+            item_cofins_rate = float(fiscal_prof.cofins_rate) if (fiscal_prof and fiscal_prof.cofins_rate is not None) else 0.0
+
             tax_calc_input = TaxCalculationInput(
                 company_crt=emit_crt,
                 company_uf=emit_uf,
                 product=ProductTaxProfileInput(
                     ncm=(sale_item.ncm or "85176277").zfill(8),
                     cest=sale_item.cest,
-                    origem="0",
-                    cst_csosn="102" if emit_crt == 1 else "00",
+                    origem=item_origem,
+                    cst_csosn=item_cst_csosn,
+                    icms_aliquot=item_icms_rate,
+                    cst_pis=item_pis_cst,
+                    pis_aliquot=item_pis_rate,
+                    cst_cofins=item_cofins_cst,
+                    cofins_aliquot=item_cofins_rate,
                 ),
                 operation=OperationResolvedInput(
                     operation_code="VENDA_PDV",
@@ -267,7 +301,7 @@ class NfceService:
             cert_pwd = decrypt_data(cert_record.password_encrypted)
             if isinstance(cert_pwd, bytes):
                 cert_pwd = cert_pwd.decode("utf-8")
-            signed_xml = NfeSigner.sign_xml(raw_xml, cert_bytes, cert_pwd)
+            signed_xml = NfeSigner.sign_nfe_xml(raw_xml, cert_bytes, cert_pwd)
 
         nfe_doc.signed_xml = signed_xml
 

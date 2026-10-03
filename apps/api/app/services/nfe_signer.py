@@ -9,6 +9,10 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 
 class NfeSigner:
     @staticmethod
+    def sign_xml(raw_xml_str: str, pfx_bytes: bytes, password: str) -> str:
+        return NfeSigner.sign_nfe_xml(raw_xml_str, pfx_bytes, password)
+
+    @staticmethod
     def sign_nfe_xml(raw_xml_str: str, pfx_bytes: bytes, password: str) -> str:
         """
         Assina digitalmente o XML da NF-e / NFC-e / Evento no nó <infNFe> ou <infEvento> / <infInut>
