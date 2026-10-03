@@ -38,9 +38,27 @@ export function ReceiptModal({ isOpen, sale, onClose }: ReceiptModalProps) {
           <div className="text-center space-y-1 border-b border-dashed border-border pb-3">
             <h3 className="font-bold text-sm text-foreground uppercase">{activeCompany?.name || "TELESYS ERP"}</h3>
             {activeCompany?.cnpj && <p>CNPJ: {activeCompany.cnpj}</p>}
-            <p className="text-[11px] text-muted-foreground">COMPROVANTE NÃO-FISCAL DE VENDA</p>
-            <p className="font-bold pt-1">{sale.code}</p>
-            <p className="text-[10px]">{new Date(sale.created_at).toLocaleString("pt-BR")}</p>
+            
+            {sale.nfce_info ? (
+              <div className="space-y-1 pt-1 border-t border-dashed border-border/60">
+                <p className="font-extrabold text-[11px] text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
+                  DANFE NFC-e - Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica
+                </p>
+                <p className="text-[10px] font-bold text-muted-foreground">
+                  NFC-e nº {sale.nfce_info.number} - Série {sale.nfce_info.series}
+                </p>
+                <div className="py-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/20">
+                    EMISSÃO AUTORIZADA NA SEFAZ
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground font-semibold">COMPROVANTE NÃO-FISCAL DE VENDA</p>
+            )}
+
+            <p className="font-bold pt-1 text-xs">{sale.code}</p>
+            <p className="text-[10px] text-muted-foreground">{new Date(sale.created_at).toLocaleString("pt-BR")}</p>
           </div>
 
           {/* Customer info if specified */}
@@ -89,7 +107,7 @@ export function ReceiptModal({ isOpen, sale, onClose }: ReceiptModalProps) {
           </div>
 
           {/* Payments */}
-          <div className="space-y-1 text-[11px]">
+          <div className="space-y-1 text-[11px] border-b border-dashed border-border pb-3">
             <span className="font-bold">FORMAS DE PAGAMENTO:</span>
             {sale.payments.map((p, i) => (
               <div key={i} className="flex justify-between pl-2">
@@ -109,6 +127,24 @@ export function ReceiptModal({ isOpen, sale, onClose }: ReceiptModalProps) {
               </div>
             )}
           </div>
+
+          {/* SEFAZ Fiscal Info Block if NFC-e present */}
+          {sale.nfce_info && (
+            <div className="space-y-1.5 pt-1 text-[10px] text-center bg-muted/30 p-2.5 rounded-lg border border-border/50">
+              <p className="font-bold uppercase text-foreground">CHAVE DE ACESSO DA NFC-E</p>
+              <p className="font-mono text-[9.5px] tracking-widest break-all select-all text-primary font-bold">
+                {sale.nfce_info.access_key.replace(/(.{4})/g, "$1 ").trim()}
+              </p>
+              {sale.nfce_info.protocol_number && (
+                <p className="text-muted-foreground pt-0.5">
+                  <span className="font-bold text-foreground">PROTOCOLO DE AUTORIZAÇÃO:</span> {sale.nfce_info.protocol_number}
+                </p>
+              )}
+              <p className="text-[9px] text-muted-foreground italic pt-0.5">
+                Consulta via leitor de QR Code ou no site da SEFAZ do seu estado
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

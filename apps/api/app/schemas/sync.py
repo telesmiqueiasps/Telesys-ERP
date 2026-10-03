@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class SyncEventPush(BaseModel):
-    event_id: UUID
+    event_id: str
     tenant_id: UUID
     company_id: UUID
     entity_type: str  # sale, customer, stock_movement, cash_movement, product
@@ -19,7 +19,7 @@ class SyncPushBatchRequest(BaseModel):
 
 
 class SyncEventResult(BaseModel):
-    event_id: UUID
+    event_id: str
     status: str  # SYNCED, FAILED, ALREADY_PROCESSED
     message: Optional[str] = None
 

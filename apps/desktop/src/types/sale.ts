@@ -53,6 +53,15 @@ export interface SalePayment {
   change_amount: number;
 }
 
+export interface NfceInfo {
+  access_key: string;
+  number: number;
+  series: number;
+  status: string;
+  protocol_number?: string | null;
+  qr_code_url?: string | null;
+}
+
 export interface SaleDetail {
   id: string;
   tenant_id: string;
@@ -70,6 +79,7 @@ export interface SaleDetail {
   notes?: string | null;
   items: SaleItem[];
   payments: SalePayment[];
+  nfce_info?: NfceInfo | null;
   created_at: string;
   updated_at: string;
 }

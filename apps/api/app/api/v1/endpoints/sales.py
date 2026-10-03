@@ -12,14 +12,38 @@ from app.models.product import Product
 from app.models.customer import Customer
 from app.models.cash import CashRegister, CashMovement, CashRegisterStatus, CashMovementType, PaymentMethod
 from app.models.stock import StockMovement, StockMovementType
+from app.models.nfe_document import NfeDocument
 from app.models.sale import Sale, SaleItem, SalePayment, SaleStatus
 from app.schemas.sale import (
     SaleCreate,
     SaleResponse,
     SaleDetailResponse,
+    NfceDocumentSummary,
 )
 
 router = APIRouter()
+
+
+def _enrich_sale_detail(db: Session, sale: Sale) -> SaleDetailResponse:
+    detail = SaleDetailResponse.model_validate(sale)
+    if sale.customer:
+        detail.customer_name = sale.customer.name
+    if sale.user:
+        detail.user_name = sale.user.name
+
+    nfe_doc = db.scalar(
+        select(NfeDocument).where(NfeDocument.sale_id == sale.id).order_by(desc(NfeDocument.created_at)).limit(1)
+    )
+    if nfe_doc:
+        detail.nfce_info = NfceDocumentSummary(
+            access_key=nfe_doc.access_key,
+            number=nfe_doc.number,
+            series=nfe_doc.series,
+            status=nfe_doc.status,
+            protocol_number=nfe_doc.protocol_number,
+            qr_code_url=getattr(nfe_doc, "qr_code_url", None),
+        )
+    return detail
 
 
 @router.post("/", response_model=SaleDetailResponse, status_code=status.HTTP_201_CREATED, summary="Finalizar Venda no PDV")
@@ -224,13 +248,7 @@ def create_sale(
         .where(Sale.id == sale.id)
     )
 
-    response = SaleDetailResponse.model_validate(sale)
-    if sale and sale.customer:
-        response.customer_name = sale.customer.name
-    if sale and sale.user:
-        response.user_name = sale.user.name
-
-    return response
+    return _enrich_sale_detail(db, sale)
 
 
 @router.get("/", response_model=List[SaleDetailResponse], summary="Listar Vendas Realizadas")
@@ -269,12 +287,7 @@ def list_sales(
     sales = db.scalars(query).unique().all()
     results = []
     for s in sales:
-        detail = SaleDetailResponse.model_validate(s)
-        if s.customer:
-            detail.customer_name = s.customer.name
-        if s.user:
-            detail.user_name = s.user.name
-        results.append(detail)
+        results.append(_enrich_sale_detail(db, s))
 
     return results
 
@@ -308,10 +321,4 @@ def get_sale_detail(
             detail="Venda não encontrada."
         )
 
-    response = SaleDetailResponse.model_validate(sale)
-    if sale.customer:
-        response.customer_name = sale.customer.name
-    if sale.user:
-        response.user_name = sale.user.name
-
-    return response
+    return _enrich_sale_detail(db, sale)

@@ -73,10 +73,22 @@ class SaleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class NfceDocumentSummary(BaseModel):
+    access_key: str
+    number: int
+    series: int
+    status: str
+    protocol_number: Optional[str] = None
+    qr_code_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SaleDetailResponse(SaleResponse):
     customer_name: Optional[str] = None
     user_name: Optional[str] = None
     items: List[SaleItemResponse] = []
     payments: List[SalePaymentResponse] = []
+    nfce_info: Optional[NfceDocumentSummary] = None
 
     model_config = ConfigDict(from_attributes=True)
