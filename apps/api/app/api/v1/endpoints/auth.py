@@ -156,20 +156,30 @@ def get_quick_users(
     db: Session = Depends(deps.get_db)
 ) -> Any:
     """
-    Retorna os usuários ativos para exibição em cards interativos na tela de login local.
+    Retorna os usuários ativos da empresa/tenant selecionada para exibição nos cards de login.
     """
-    stmt = select(User).where(User.is_active == True)
+    stmt = select(User).where(User.is_active == True, User.is_superuser == False)
     if tenant_id:
         try:
             stmt = stmt.where(User.tenant_id == UUID(tenant_id))
         except Exception:
             pass
-            
+    else:
+        # Padrão: se nenhum tenant_id for informado, busca o primeiro tenant de cliente do sistema
+        client_tenant = db.scalar(
+            select(Tenant)
+            .where(Tenant.name != "System Tenant Test")
+            .order_by(Tenant.created_at.desc())
+            .limit(1)
+        )
+        if client_tenant:
+            stmt = stmt.where(User.tenant_id == client_tenant.id)
+
     users = db.scalars(stmt.order_by(User.name)).all()
-    
+
     result = []
     for u in users:
-        role_name = u.roles[0].name if u.roles else ("Super Admin" if u.is_superuser else "Usuário")
+        role_name = u.roles[0].name if u.roles else "Usuário"
         result.append(
             QuickUserResponse(
                 id=u.id,

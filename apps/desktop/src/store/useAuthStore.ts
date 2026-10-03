@@ -52,6 +52,12 @@ export const useAuthStore = create<AuthState>()(
 
       setSession: (token: string, refreshToken: string, user: UserMe) => {
         const firstActiveCompany = user.companies && user.companies.length > 0 ? user.companies[0] : null;
+        if (user.tenant) {
+          localStorage.setItem("telesys_terminal_tenant", JSON.stringify(user.tenant));
+        }
+        if (firstActiveCompany) {
+          localStorage.setItem("telesys_terminal_company", JSON.stringify(firstActiveCompany));
+        }
         set({
           token,
           refreshToken,
@@ -61,7 +67,12 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      setActiveCompany: (company: CompanyInfo) => set({ activeCompany: company }),
+      setActiveCompany: (company: CompanyInfo) => {
+        if (company) {
+          localStorage.setItem("telesys_terminal_company", JSON.stringify(company));
+        }
+        set({ activeCompany: company });
+      },
 
       updateUser: (user: UserMe) => set({ user }),
 

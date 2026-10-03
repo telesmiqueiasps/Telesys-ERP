@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Layers,
   LayoutDashboard,
   ShoppingCart,
   Wallet,
@@ -34,6 +33,7 @@ import { syncEngine } from "@/services/syncEngine";
 import { updaterService } from "@/services/updaterService";
 import { SyncStatusStats } from "@/types/sync";
 import { UpdateCheckResponse } from "@/types/updater";
+import logoImg from "@/assets/logo.png";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -104,16 +104,12 @@ export function AppLayout({ children, activeModule = "dashboard", onNavigate }: 
       >
         {/* Top Brand */}
         <div>
-          <div className="h-16 border-b border-border flex items-center justify-between px-4">
+          <div className="h-16 border-b border-border flex items-center justify-between px-3.5">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="h-9 w-9 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-                <Layers className="h-5 w-5" />
-              </div>
-              {isSidebarOpen && (
-                <div className="flex flex-col truncate">
-                  <span className="font-bold text-sm tracking-tight truncate">Telesys Tecnologia</span>
-                  <span className="text-[10px] text-muted-foreground truncate">Desktop Local-First</span>
-                </div>
+              {isSidebarOpen ? (
+                <img src={logoImg} alt="Telesys Logo" className="h-9 w-auto object-contain" />
+              ) : (
+                <img src={logoImg} alt="Telesys Logo" className="h-8 w-8 object-cover object-left" />
               )}
             </div>
 

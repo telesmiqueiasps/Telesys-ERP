@@ -16,7 +16,6 @@ import {
   Moon,
   Sun,
   UserCheck,
-  Building2,
   KeyRound,
   ArrowLeft,
 } from "lucide-react";
@@ -26,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/apiClient";
-import { useAuthStore, UserMe } from "@/store/useAuthStore";
+import { useAuthStore, UserMe, TenantInfo, CompanyInfo } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
 import logoImg from "@/assets/logo.png";
 
@@ -46,11 +45,28 @@ interface QuickUser {
 }
 
 export function LoginView() {
-  const { setSession } = useAuthStore();
+  const { setSession, user: authUser, activeCompany: authCompany } = useAuthStore();
   const { theme, toggleTheme } = useAppStore();
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Read persisted terminal client tenant and company info
+  const savedTenantStr = localStorage.getItem("telesys_terminal_tenant");
+  const savedCompanyStr = localStorage.getItem("telesys_terminal_company");
+  
+  let savedTenant: TenantInfo | null = null;
+  let savedCompany: CompanyInfo | null = null;
+
+  if (savedTenantStr) {
+    try { savedTenant = JSON.parse(savedTenantStr); } catch (e) {}
+  }
+  if (savedCompanyStr) {
+    try { savedCompany = JSON.parse(savedCompanyStr); } catch (e) {}
+  }
+
+  const currentTenant = savedTenant || authUser?.tenant;
+  const currentCompany = savedCompany || authCompany;
 
   // Card-based Quick Login state
   const [loginMode, setLoginMode] = useState<"cards" | "manual">("cards");
@@ -71,7 +87,7 @@ export function LoginView() {
     },
   });
 
-  // Fetch quick users on mount
+  // Fetch quick users on mount or tenant change
   useEffect(() => {
     // Check localStorage cache first for fast local-first render
     const cachedUsersStr = localStorage.getItem("telesys_quick_users_cache");
@@ -82,7 +98,8 @@ export function LoginView() {
     }
 
     setLoadingQuickUsers(true);
-    apiFetch<QuickUser[]>("/auth/quick-users")
+    const tenantParam = currentTenant?.id ? `?tenant_id=${currentTenant.id}` : "";
+    apiFetch<QuickUser[]>(`/auth/quick-users${tenantParam}`)
       .then((data) => {
         if (data && data.length > 0) {
           setQuickUsers(data);
@@ -95,7 +112,7 @@ export function LoginView() {
       .finally(() => {
         setLoadingQuickUsers(false);
       });
-  }, []);
+  }, [currentTenant?.id]);
 
   const handleSelectCardUser = (user: QuickUser) => {
     setSelectedUser(user);
@@ -123,6 +140,14 @@ export function LoginView() {
 
       // 2. Fetch authenticated user profile & permissions
       const userData = await apiFetch<UserMe>("/auth/me", {}, tokenData.access_token);
+
+      // Save terminal tenant & company immediately
+      if (userData.tenant) {
+        localStorage.setItem("telesys_terminal_tenant", JSON.stringify(userData.tenant));
+      }
+      if (userData.companies && userData.companies.length > 0) {
+        localStorage.setItem("telesys_terminal_company", JSON.stringify(userData.companies[0]));
+      }
 
       // 3. Save session in Auth Store
       setSession(tokenData.access_token, tokenData.refresh_token, userData);
@@ -163,7 +188,7 @@ export function LoginView() {
         {/* Brand Header */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoImg} alt="Telesys Logo" className="h-12 w-auto object-contain drop-shadow-md" />
+            <img src={logoImg} alt="Telesys Logo" className="h-16 sm:h-20 max-h-24 w-auto object-contain drop-shadow-xl py-1" />
           </div>
 
           <Badge variant="outline" className="border-slate-700 bg-slate-800/60 text-slate-300">
@@ -218,13 +243,17 @@ export function LoginView() {
       <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 overflow-y-auto">
         {/* Header Bar */}
         <div className="flex justify-between items-center w-full max-w-lg mx-auto">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold tracking-tight text-xs text-foreground">Telesys Tecnologia Terminal</span>
-              <span className="text-[10px] text-muted-foreground">Empresa Matriz Pré-selecionada</span>
+          <div className="flex items-center gap-3">
+            <img src={logoImg} alt="Telesys Logo" className="h-9 sm:h-10 w-auto object-contain" />
+            <div className="flex flex-col truncate max-w-[240px]">
+              <span className="font-bold tracking-tight text-xs text-foreground truncate">
+                {currentCompany?.name || currentTenant?.name || "Empresa Selecionada"}
+              </span>
+              <span className="text-[10px] text-muted-foreground truncate">
+                {currentCompany?.cnpj
+                  ? `CNPJ: ${currentCompany.cnpj}`
+                  : (currentCompany?.trade_name || currentTenant?.name || "Terminal Conectado")}
+              </span>
             </div>
           </div>
 
